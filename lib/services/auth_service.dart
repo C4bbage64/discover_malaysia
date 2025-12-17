@@ -1,9 +1,13 @@
 import 'dart:async';
+import '../config/app_config.dart';
 import '../models/user.dart';
+import 'interfaces/auth_service_interface.dart';
+
+export 'interfaces/auth_service_interface.dart' show AuthResult;
 
 /// Authentication service for user login/registration
 /// Currently uses local/dummy data; can be swapped to Firebase/API later
-class AuthService {
+class AuthService implements IAuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
@@ -12,18 +16,23 @@ class AuthService {
   final _authStateController = StreamController<User?>.broadcast();
 
   /// Stream of auth state changes
+  @override
   Stream<User?> get authStateChanges => _authStateController.stream;
 
   /// Current logged-in user
+  @override
   User? get currentUser => _currentUser;
 
   /// Check if user is logged in
+  @override
   bool get isLoggedIn => _currentUser != null;
 
   /// Check if current user is admin
+  @override
   bool get isAdmin => _currentUser?.isAdmin ?? false;
 
   /// Login with email and password
+  @override
   Future<AuthResult> login(String email, String password) async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
@@ -52,6 +61,7 @@ class AuthService {
   }
 
   /// Register a new user
+  @override
   Future<AuthResult> register({
     required String name,
     required String email,
@@ -73,8 +83,8 @@ class AuthService {
     if (!_isValidEmail(email)) {
       return AuthResult.failure('Please enter a valid email address.');
     }
-    if (password.length < 6) {
-      return AuthResult.failure('Password must be at least 6 characters.');
+    if (password.length < AppConfig.minPasswordLength) {
+      return AuthResult.failure('Password must be at least ${AppConfig.minPasswordLength} characters.');
     }
 
     // Create new user
@@ -101,12 +111,14 @@ class AuthService {
   }
 
   /// Logout the current user
+  @override
   Future<void> logout() async {
     _currentUser = null;
     _authStateController.add(null);
   }
 
   /// Dispose resources
+  @override
   void dispose() {
     _authStateController.close();
   }
@@ -135,19 +147,4 @@ class AuthService {
       'createdAt': DateTime.now().subtract(const Duration(days: 90)),
     },
   ];
-}
-
-/// Result of an authentication operation
-class AuthResult {
-  final bool isSuccess;
-  final User? user;
-  final String? errorMessage;
-
-  AuthResult._({required this.isSuccess, this.user, this.errorMessage});
-
-  factory AuthResult.success(User user) =>
-      AuthResult._(isSuccess: true, user: user);
-
-  factory AuthResult.failure(String message) =>
-      AuthResult._(isSuccess: false, errorMessage: message);
 }

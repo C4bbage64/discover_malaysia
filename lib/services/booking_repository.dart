@@ -1,9 +1,13 @@
+import '../config/app_config.dart';
 import '../models/booking.dart';
 import '../models/destination.dart';
+import 'interfaces/booking_repository_interface.dart';
+
+export 'interfaces/booking_repository_interface.dart' show PriceBreakdown;
 
 /// Repository for managing bookings
 /// Currently uses in-memory storage; can be swapped to API/local DB later
-class BookingRepository {
+class BookingRepository implements IBookingRepository {
   static final BookingRepository _instance = BookingRepository._internal();
   factory BookingRepository() => _instance;
   BookingRepository._internal();
@@ -11,10 +15,11 @@ class BookingRepository {
   final List<Booking> _bookings = [];
   int _nextId = 1;
 
-  /// Tax rate (e.g., 6% SST in Malaysia)
-  static const double taxRate = 0.06;
+  /// Tax rate from AppConfig
+  double get taxRate => AppConfig.taxRate;
 
   /// Get all bookings for a user
+  @override
   List<Booking> getBookingsForUser(String userId) {
     return _bookings
         .where((b) => b.userId == userId)
@@ -23,6 +28,7 @@ class BookingRepository {
   }
 
   /// Get upcoming bookings for a user
+  @override
   List<Booking> getUpcomingBookings(String userId) {
     final now = DateTime.now();
     return _bookings
@@ -35,6 +41,7 @@ class BookingRepository {
   }
 
   /// Get past bookings for a user
+  @override
   List<Booking> getPastBookings(String userId) {
     final now = DateTime.now();
     return _bookings
@@ -44,6 +51,7 @@ class BookingRepository {
   }
 
   /// Get a booking by ID
+  @override
   Booking? getById(String id) {
     try {
       return _bookings.firstWhere((b) => b.id == id);
@@ -53,6 +61,7 @@ class BookingRepository {
   }
 
   /// Calculate price breakdown for a booking
+  @override
   PriceBreakdown calculatePrice({
     required Destination destination,
     required Map<TicketType, int> ticketQuantities,
@@ -110,6 +119,7 @@ class BookingRepository {
   }
 
   /// Create a new booking
+  @override
   Future<Booking> createBooking({
     required String userId,
     required Destination destination,
@@ -144,6 +154,7 @@ class BookingRepository {
   }
 
   /// Cancel a booking
+  @override
   Future<bool> cancelBooking(String bookingId) async {
     final index = _bookings.indexWhere((b) => b.id == bookingId);
     if (index == -1) return false;
@@ -168,28 +179,4 @@ class BookingRepository {
     );
     return true;
   }
-}
-
-/// Price breakdown for booking summary
-class PriceBreakdown {
-  final List<TicketSelection> tickets;
-  final double subtotal;
-  final double taxRate;
-  final double taxAmount;
-  final double total;
-
-  const PriceBreakdown({
-    required this.tickets,
-    required this.subtotal,
-    required this.taxRate,
-    required this.taxAmount,
-    required this.total,
-  });
-
-  int get totalTickets => tickets.fold(0, (sum, t) => sum + t.quantity);
-
-  String get formattedSubtotal => 'RM ${subtotal.toStringAsFixed(2)}';
-  String get formattedTax => 'RM ${taxAmount.toStringAsFixed(2)}';
-  String get formattedTotal => 'RM ${total.toStringAsFixed(2)}';
-  String get taxRatePercent => '${(taxRate * 100).toStringAsFixed(0)}%';
 }

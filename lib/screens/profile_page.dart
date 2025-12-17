@@ -3,6 +3,7 @@ import '../services/auth_service.dart';
 import '../services/booking_repository.dart';
 import 'auth/login_page.dart';
 import 'admin/admin_dashboard_page.dart';
+import 'settings_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -58,7 +59,10 @@ class _ProfilePageState extends State<ProfilePage> {
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             onPressed: () {
-              // TODO: Settings page
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsPage()),
+              );
             },
           ),
         ],

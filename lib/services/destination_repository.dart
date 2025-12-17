@@ -1,22 +1,26 @@
 import '../models/destination.dart';
 import '../models/review.dart';
+import 'interfaces/destination_repository_interface.dart';
 
 /// Repository for accessing destination data
 /// Currently uses local/dummy data; can be swapped to API later
-class DestinationRepository {
+class DestinationRepository implements IDestinationRepository {
   static final DestinationRepository _instance = DestinationRepository._internal();
   factory DestinationRepository() => _instance;
   DestinationRepository._internal();
 
   /// Get all destinations
+  @override
   List<Destination> getAllDestinations() => _destinations;
 
   /// Get destinations by category
+  @override
   List<Destination> getByCategory(DestinationCategory category) {
     return _destinations.where((d) => d.category == category).toList();
   }
 
   /// Get featured destinations (top rated)
+  @override
   List<Destination> getFeatured({int limit = 3}) {
     final sorted = List<Destination>.from(_destinations)
       ..sort((a, b) => b.rating.compareTo(a.rating));
@@ -24,6 +28,7 @@ class DestinationRepository {
   }
 
   /// Get nearby destinations (sorted by distance)
+  @override
   List<Destination> getNearby({int limit = 5}) {
     final withDistance = _destinations.where((d) => d.distanceKm != null).toList()
       ..sort((a, b) => a.distanceKm!.compareTo(b.distanceKm!));
@@ -31,6 +36,7 @@ class DestinationRepository {
   }
 
   /// Search destinations by name or description
+  @override
   List<Destination> search(String query) {
     final q = query.toLowerCase().trim();
     if (q.isEmpty) return _destinations;
@@ -42,6 +48,7 @@ class DestinationRepository {
   }
 
   /// Get a destination by ID
+  @override
   Destination? getById(String id) {
     try {
       return _destinations.firstWhere((d) => d.id == id);
@@ -51,6 +58,7 @@ class DestinationRepository {
   }
 
   /// Get reviews for a destination
+  @override
   List<Review> getReviewsForDestination(String destinationId) {
     return _reviews.where((r) => r.destinationId == destinationId).toList();
   }
@@ -58,11 +66,13 @@ class DestinationRepository {
   // ============ ADMIN METHODS ============
 
   /// Add a new destination (admin only)
+  @override
   void addDestination(Destination destination) {
     _destinations.add(destination);
   }
 
   /// Update an existing destination (admin only)
+  @override
   void updateDestination(Destination destination) {
     final index = _destinations.indexWhere((d) => d.id == destination.id);
     if (index != -1) {
@@ -71,6 +81,7 @@ class DestinationRepository {
   }
 
   /// Delete a destination (admin only)
+  @override
   void deleteDestination(String id) {
     _destinations.removeWhere((d) => d.id == id);
   }
