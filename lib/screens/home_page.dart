@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/destination.dart';
-import '../services/destination_repository.dart';
+import '../providers/destination_provider.dart';
 import 'site_details_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -11,14 +12,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final _destinationRepo = DestinationRepository();
   final _searchController = TextEditingController();
   
   DestinationCategory? _selectedCategory;
   String _searchQuery = '';
 
-  List<Destination> get _filteredDestinations {
-    var destinations = _destinationRepo.getAllDestinations();
+  List<Destination> _getFilteredDestinations(DestinationProvider provider) {
+    var destinations = provider.allDestinations;
     
     // Filter by category
     if (_selectedCategory != null) {
@@ -29,7 +29,7 @@ class _HomePageState extends State<HomePage> {
     
     // Filter by search query
     if (_searchQuery.isNotEmpty) {
-      destinations = _destinationRepo.search(_searchQuery);
+      destinations = provider.search(_searchQuery);
       if (_selectedCategory != null) {
         destinations = destinations
             .where((d) => d.category == _selectedCategory)
@@ -40,11 +40,11 @@ class _HomePageState extends State<HomePage> {
     return destinations;
   }
 
-  List<Destination> get _featuredDestinations => 
-      _destinationRepo.getFeatured(limit: 1);
+  List<Destination> _getFeaturedDestinations(DestinationProvider provider) => 
+      provider.getFeatured(limit: 1);
 
-  List<Destination> get _nearbyDestinations =>
-      _destinationRepo.getNearby(limit: 5);
+  List<Destination> _getNearbyDestinations(DestinationProvider provider) =>
+      provider.getNearby(limit: 5);
 
   @override
   void dispose() {
@@ -54,6 +54,11 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final destinationProvider = context.watch<DestinationProvider>();
+    final filteredDestinations = _getFilteredDestinations(destinationProvider);
+    final featuredDestinations = _getFeaturedDestinations(destinationProvider);
+    final nearbyDestinations = _getNearbyDestinations(destinationProvider);
+    
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -77,7 +82,7 @@ class _HomePageState extends State<HomePage> {
               // Search bar
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: TextField(
@@ -113,7 +118,7 @@ class _HomePageState extends State<HomePage> {
                   style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                _buildDestinationList(_filteredDestinations),
+                _buildDestinationList(filteredDestinations),
               ] else ...[
                 // Default view: Featured + Nearby
                 const Text(
@@ -121,15 +126,15 @@ class _HomePageState extends State<HomePage> {
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                if (_featuredDestinations.isNotEmpty)
-                  _buildFeaturedCard(_featuredDestinations.first),
+                if (featuredDestinations.isNotEmpty)
+                  _buildFeaturedCard(featuredDestinations.first),
                 const SizedBox(height: 24),
                 const Text(
                   'Nearby Cultural Sites',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                _buildNearbySites(_nearbyDestinations),
+                _buildNearbySites(nearbyDestinations),
               ],
             ],
           ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../config/app_config.dart';
 import '../models/booking.dart';
-import '../services/auth_service.dart';
-import '../services/booking_repository.dart';
+import '../providers/auth_provider.dart';
+import '../providers/booking_provider.dart';
 
 class BookingsPage extends StatefulWidget {
   const BookingsPage({super.key});
@@ -12,8 +14,6 @@ class BookingsPage extends StatefulWidget {
 
 class _BookingsPageState extends State<BookingsPage>
     with SingleTickerProviderStateMixin {
-  final _authService = AuthService();
-  final _bookingRepo = BookingRepository();
   late TabController _tabController;
 
   @override
@@ -30,7 +30,9 @@ class _BookingsPageState extends State<BookingsPage>
 
   @override
   Widget build(BuildContext context) {
-    final user = _authService.currentUser;
+    final authProvider = context.watch<AuthProvider>();
+    final bookingProvider = context.watch<BookingProvider>();
+    final user = authProvider.user;
 
     if (user == null) {
       return Scaffold(
@@ -51,8 +53,8 @@ class _BookingsPageState extends State<BookingsPage>
       );
     }
 
-    final upcomingBookings = _bookingRepo.getUpcomingBookings(user.id);
-    final pastBookings = _bookingRepo.getPastBookings(user.id);
+    final upcomingBookings = bookingProvider.getUpcomingBookings(user.id);
+    final pastBookings = bookingProvider.getPastBookings(user.id);
 
     return Scaffold(
       appBar: AppBar(
@@ -109,12 +111,84 @@ class _BookingsPageState extends State<BookingsPage>
       padding: const EdgeInsets.all(16),
       itemCount: bookings.length,
       itemBuilder: (context, index) {
-        return _buildBookingCard(bookings[index]);
+        return _buildBookingCard(bookings[index], isUpcoming: isUpcoming);
       },
     );
   }
 
-  Widget _buildBookingCard(Booking booking) {
+  /// Check if a booking can be cancelled based on policy
+  bool _canCancelBooking(Booking booking) {
+    if (booking.status == BookingStatus.cancelled ||
+        booking.status == BookingStatus.completed) {
+      return false;
+    }
+    
+    final now = DateTime.now();
+    final daysUntilVisit = booking.visitDate.difference(now).inDays;
+    return daysUntilVisit >= AppConfig.minCancellationDays;
+  }
+
+  /// Show cancellation confirmation dialog
+  Future<void> _showCancelDialog(Booking booking) async {
+    final daysUntilVisit = booking.visitDate.difference(DateTime.now()).inDays;
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Booking'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Are you sure you want to cancel this booking?'),
+            const SizedBox(height: 12),
+            Text(
+              booking.destinationName,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            Text('Visit Date: ${booking.formattedVisitDate}'),
+            Text('Total: ${booking.formattedTotalPrice}'),
+            const SizedBox(height: 12),
+            Text(
+              'Days until visit: $daysUntilVisit',
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep Booking'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Cancel Booking'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final bookingProvider = context.read<BookingProvider>();
+      final success = await bookingProvider.cancelBooking(booking.id);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success
+                  ? 'Booking cancelled successfully'
+                  : bookingProvider.error ?? 'Failed to cancel booking',
+            ),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildBookingCard(Booking booking, {required bool isUpcoming}) {
     Color statusColor;
     switch (booking.status) {
       case BookingStatus.confirmed:
@@ -126,6 +200,8 @@ class _BookingsPageState extends State<BookingsPage>
       case BookingStatus.cancelled:
         statusColor = Colors.red;
     }
+
+    final canCancel = isUpcoming && _canCancelBooking(booking);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -236,6 +312,34 @@ class _BookingsPageState extends State<BookingsPage>
                     ),
                   ],
                 ),
+                // Cancel button for upcoming bookings
+                if (canCancel) ...[
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showCancelDialog(booking),
+                      icon: const Icon(Icons.cancel_outlined),
+                      label: const Text('Cancel Booking'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                    ),
+                  ),
+                ] else if (isUpcoming && booking.status == BookingStatus.confirmed) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Cannot cancel - less than ${AppConfig.minCancellationDays} day(s) before visit',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[500],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

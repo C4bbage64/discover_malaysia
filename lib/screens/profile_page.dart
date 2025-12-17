@@ -1,24 +1,22 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import '../services/booking_repository.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/booking_provider.dart';
+import '../providers/favorites_provider.dart';
 import 'auth/login_page.dart';
 import 'admin/admin_dashboard_page.dart';
+import 'favorites_page.dart';
 import 'settings_page.dart';
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
-}
-
-class _ProfilePageState extends State<ProfilePage> {
-  final _authService = AuthService();
-  final _bookingRepo = BookingRepository();
-
-  @override
   Widget build(BuildContext context) {
-    final user = _authService.currentUser;
+    final authProvider = context.watch<AuthProvider>();
+    final bookingProvider = context.watch<BookingProvider>();
+    final favoritesProvider = context.watch<FavoritesProvider>();
+    final user = authProvider.user;
 
     if (user == null) {
       return Scaffold(
@@ -49,8 +47,9 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     }
 
-    final bookings = _bookingRepo.getBookingsForUser(user.id);
-    final upcomingCount = _bookingRepo.getUpcomingBookings(user.id).length;
+    final bookings = bookingProvider.getBookingsForUser(user.id);
+    final upcomingCount = bookingProvider.getUpcomingBookings(user.id).length;
+    final favoritesCount = favoritesProvider.getFavoritesCount(user.id);
 
     return Scaffold(
       appBar: AppBar(
@@ -155,17 +154,26 @@ class _ProfilePageState extends State<ProfilePage> {
                     color: Colors.green,
                   ),
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    icon: Icons.favorite,
+                    value: favoritesCount.toString(),
+                    label: 'Favorites',
+                    color: Colors.red,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 24),
 
             // Menu items
-            _buildMenuSection(),
+            _buildMenuSection(context),
             const SizedBox(height: 24),
 
             // Admin section
             if (user.isAdmin) ...[
-              _buildAdminSection(),
+              _buildAdminSection(context),
               const SizedBox(height: 24),
             ],
 
@@ -173,7 +181,7 @@ class _ProfilePageState extends State<ProfilePage> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: _logout,
+                onPressed: () => _logout(context, authProvider),
                 icon: const Icon(Icons.logout, color: Colors.red),
                 label: const Text(
                   'Logout',
@@ -230,7 +238,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildMenuSection() {
+  Widget _buildMenuSection(BuildContext context) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Column(
@@ -239,7 +247,10 @@ class _ProfilePageState extends State<ProfilePage> {
             icon: Icons.favorite_outline,
             title: 'Favorites',
             onTap: () {
-              // TODO: Favorites page
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const FavoritesPage()),
+              );
             },
           ),
           const Divider(height: 1),
@@ -247,7 +258,7 @@ class _ProfilePageState extends State<ProfilePage> {
             icon: Icons.notifications_outlined,
             title: 'Notifications',
             onTap: () {
-              // TODO: Notifications page
+              _showComingSoonDialog(context, 'Notifications');
             },
           ),
           const Divider(height: 1),
@@ -255,7 +266,7 @@ class _ProfilePageState extends State<ProfilePage> {
             icon: Icons.help_outline,
             title: 'Help & Support',
             onTap: () {
-              // TODO: Help page
+              _showComingSoonDialog(context, 'Help & Support');
             },
           ),
           const Divider(height: 1),
@@ -263,7 +274,7 @@ class _ProfilePageState extends State<ProfilePage> {
             icon: Icons.info_outline,
             title: 'About',
             onTap: () {
-              // TODO: About page
+              _showAboutDialog(context);
             },
           ),
         ],
@@ -271,7 +282,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildAdminSection() {
+  Widget _buildAdminSection(BuildContext context) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       color: Colors.orange[50],
@@ -326,7 +337,54 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Future<void> _logout() async {
+  void _showComingSoonDialog(BuildContext context, String feature) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(feature),
+        content: const Text('This feature is coming soon!'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('About Discover Malaysia'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Version 1.0.0'),
+            SizedBox(height: 12),
+            Text(
+              'Discover Malaysia is your gateway to exploring the rich cultural heritage, natural wonders, and hidden gems of Malaysia.',
+            ),
+            SizedBox(height: 12),
+            Text(
+              '© 2025 Discover Malaysia',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _logout(BuildContext context, AuthProvider authProvider) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -346,13 +404,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     if (confirm == true) {
-      await _authService.logout();
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginPage()),
-        );
-      }
+      await authProvider.logout();
     }
   }
 }

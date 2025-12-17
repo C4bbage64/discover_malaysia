@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/destination.dart';
 import '../models/review.dart';
-import '../services/destination_repository.dart';
+import '../providers/auth_provider.dart';
+import '../providers/destination_provider.dart';
+import '../providers/favorites_provider.dart';
 import 'booking_form_page.dart';
 
 class SiteDetailsPage extends StatelessWidget {
@@ -12,7 +15,13 @@ class SiteDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reviews = DestinationRepository().getReviewsForDestination(destination.id);
+    final destinationProvider = context.watch<DestinationProvider>();
+    final favoritesProvider = context.watch<FavoritesProvider>();
+    final authProvider = context.watch<AuthProvider>();
+    final reviews = destinationProvider.getReviewsForDestination(destination.id);
+    
+    final userId = authProvider.user?.id;
+    final isFavorite = userId != null && favoritesProvider.isFavorite(userId, destination.id);
     
     return Scaffold(
       body: CustomScrollView(
@@ -42,14 +51,33 @@ class SiteDetailsPage extends StatelessWidget {
             actions: [
               IconButton(
                 icon: const Icon(Icons.share, color: Colors.white),
-                onPressed: () {
-                  // TODO: Share functionality
-                },
+                onPressed: () => _shareDestination(context),
               ),
               IconButton(
-                icon: const Icon(Icons.favorite_border, color: Colors.white),
+                icon: Icon(
+                  isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: isFavorite ? Colors.red : Colors.white,
+                ),
                 onPressed: () {
-                  // TODO: Favorite functionality
+                  if (userId != null) {
+                    favoritesProvider.toggleFavorite(userId, destination.id);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          isFavorite 
+                            ? 'Removed from favorites'
+                            : 'Added to favorites',
+                        ),
+                        duration: const Duration(seconds: 1),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please login to add favorites'),
+                      ),
+                    );
+                  }
                 },
               ),
             ],
@@ -419,6 +447,135 @@ class SiteDetailsPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _shareDestination(BuildContext context) {
+    final text = '''
+Check out ${destination.name}!
+
+${destination.shortDescription}
+
+📍 ${destination.address}
+⭐ Rating: ${destination.rating}/5.0
+💰 ${destination.displayPrice}
+
+Discover more amazing places in Malaysia!
+''';
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Share this destination',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildShareOption(
+                    context,
+                    icon: Icons.copy,
+                    label: 'Copy',
+                    onTap: () {
+                      // Copy text to clipboard
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Details copied to clipboard'),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildShareOption(
+                    context,
+                    icon: Icons.map,
+                    label: 'Maps',
+                    onTap: () async {
+                      Navigator.pop(context);
+                      final url = Uri.parse(
+                        'https://www.google.com/maps/search/?api=1&query=${destination.latitude},${destination.longitude}',
+                      );
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                  ),
+                  _buildShareOption(
+                    context,
+                    icon: Icons.navigation,
+                    label: 'Waze',
+                    onTap: () async {
+                      Navigator.pop(context);
+                      final url = Uri.parse(
+                        'https://waze.com/ul?ll=${destination.latitude},${destination.longitude}&navigate=yes',
+                      );
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  text.trim(),
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShareOption(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(label, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
       ),
     );
   }

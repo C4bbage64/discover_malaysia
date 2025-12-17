@@ -1,6 +1,7 @@
 import 'package:discover_malaysia/providers/auth_provider.dart';
 import 'package:discover_malaysia/providers/booking_provider.dart';
 import 'package:discover_malaysia/providers/destination_provider.dart';
+import 'package:discover_malaysia/providers/favorites_provider.dart';
 import 'package:discover_malaysia/providers/settings_provider.dart';
 import 'package:discover_malaysia/screens/auth/login_page.dart';
 import 'package:discover_malaysia/screens/main_navigation.dart';
@@ -21,26 +22,32 @@ class MainApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => BookingProvider()),
         ChangeNotifierProvider(create: (_) => DestinationProvider()),
+        ChangeNotifierProvider(create: (_) => FavoritesProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ],
       child: Consumer<SettingsProvider>(
-        builder: (context, settings, _) => MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: 'Discover Malaysia',
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-            useMaterial3: true,
-          ),
-          darkTheme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: Colors.blue,
-              brightness: Brightness.dark,
+        builder: (context, settings, _) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Discover Malaysia',
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: Colors.blue,
+                brightness: Brightness.light,
+              ),
+              useMaterial3: true,
             ),
-            useMaterial3: true,
-          ),
-          themeMode: settings.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-          home: const AuthWrapper(),
-        ),
+            darkTheme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: Colors.blue,
+                brightness: Brightness.dark,
+              ),
+              useMaterial3: true,
+            ),
+            themeMode: settings.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            home: const AuthWrapper(),
+          );
+        },
       ),
     );
   }

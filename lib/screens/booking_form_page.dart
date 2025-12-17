@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/destination.dart';
 import '../models/booking.dart';
-import '../services/auth_service.dart';
-import '../services/booking_repository.dart';
+import '../providers/auth_provider.dart';
+import '../providers/booking_provider.dart';
+import '../services/booking_repository.dart' show PriceBreakdown;
+import 'booking_confirmation_page.dart';
 
 class BookingFormPage extends StatefulWidget {
   final Destination destination;
@@ -16,8 +19,6 @@ class BookingFormPage extends StatefulWidget {
 
 class _BookingFormPageState extends State<BookingFormPage> {
   final _formKey = GlobalKey<FormState>();
-  final _bookingRepo = BookingRepository();
-  final _authService = AuthService();
   
   // Ticket quantities
   final Map<TicketType, int> _ticketQuantities = {
@@ -40,10 +41,12 @@ class _BookingFormPageState extends State<BookingFormPage> {
 
   int get _totalTickets => _ticketQuantities.values.fold(0, (sum, qty) => sum + qty);
 
-  PriceBreakdown get _priceBreakdown => _bookingRepo.calculatePrice(
-    destination: widget.destination,
-    ticketQuantities: _ticketQuantities,
-  );
+  PriceBreakdown _calculatePriceBreakdown(BookingProvider bookingProvider) {
+    return bookingProvider.calculatePrice(
+      destination: widget.destination,
+      ticketQuantities: _ticketQuantities,
+    );
+  }
 
   @override
   void dispose() {
@@ -65,6 +68,9 @@ class _BookingFormPageState extends State<BookingFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bookingProvider = context.watch<BookingProvider>();
+    final priceBreakdown = _calculatePriceBreakdown(bookingProvider);
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Book Tickets'),
@@ -120,7 +126,7 @@ class _BookingFormPageState extends State<BookingFormPage> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
-                _buildPriceSummary(),
+                _buildPriceSummary(bookingProvider),
               ],
               
               // Space for button
@@ -135,7 +141,7 @@ class _BookingFormPageState extends State<BookingFormPage> {
           ? Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.1),
@@ -165,7 +171,7 @@ class _BookingFormPageState extends State<BookingFormPage> {
                           ),
                         )
                       : Text(
-                          'Confirm Booking - ${_priceBreakdown.formattedTotal}',
+                          'Confirm Booking - ${priceBreakdown.formattedTotal}',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -406,8 +412,8 @@ class _BookingFormPageState extends State<BookingFormPage> {
     );
   }
 
-  Widget _buildPriceSummary() {
-    final breakdown = _priceBreakdown;
+  Widget _buildPriceSummary(BookingProvider bookingProvider) {
+    final breakdown = _calculatePriceBreakdown(bookingProvider);
     
     return Card(
       elevation: 2,
@@ -515,7 +521,8 @@ class _BookingFormPageState extends State<BookingFormPage> {
     }
     
     // Check user is logged in
-    if (!_authService.isLoggedIn) {
+    final authProvider = context.read<AuthProvider>();
+    if (!authProvider.isLoggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please login to make a booking'),
@@ -530,13 +537,14 @@ class _BookingFormPageState extends State<BookingFormPage> {
     });
     
     try {
-      final breakdown = _priceBreakdown;
+      final bookingProvider = context.read<BookingProvider>();
+      final breakdown = _calculatePriceBreakdown(bookingProvider);
       final visitorNames = _visitorNameControllers
           .map((c) => c.text.trim())
           .toList();
       
-      final booking = await _bookingRepo.createBooking(
-        userId: _authService.currentUser!.id,
+      final booking = await bookingProvider.createBooking(
+        userId: authProvider.user!.id,
         destination: widget.destination,
         tickets: breakdown.tickets.where((t) => t.quantity > 0).toList(),
         visitorNames: visitorNames,
@@ -546,39 +554,19 @@ class _BookingFormPageState extends State<BookingFormPage> {
         totalPrice: breakdown.total,
       );
       
-      if (mounted) {
-        // Show success and navigate back
-        await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.green),
-                SizedBox(width: 8),
-                Text('Booking Confirmed!'),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Booking ID: ${booking.id}'),
-                const SizedBox(height: 8),
-                Text('Visit Date: ${booking.formattedVisitDate}'),
-                const SizedBox(height: 8),
-                Text('Total: ${booking.formattedTotalPrice}'),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // Close dialog
-                  Navigator.pop(context); // Go back to details
-                  Navigator.pop(context); // Go back to home
-                },
-                child: const Text('Done'),
-              ),
-            ],
+      if (mounted && booking != null) {
+        // Navigate to confirmation page
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BookingConfirmationPage(booking: booking),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(bookingProvider.error ?? 'Booking failed'),
+            backgroundColor: Colors.red,
           ),
         );
       }
