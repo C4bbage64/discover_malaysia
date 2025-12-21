@@ -1,82 +1,102 @@
 # Discover Malaysia
 
-A Flutter mobile app for discovering and booking Malaysian cultural tourism destinations.
+Discover Malaysia is a cross-platform Flutter app for discovering and booking Malaysian cultural tourism destinations. It supports Android, iOS, and Web, and uses Firebase for authentication and data storage.
 
 ## Features
 
-### For Tourists
-- 🔍 **Browse & Search** – Explore cultural sites, events, food spots, and travel packages
-- 📍 **Destination Details** – View images, descriptions, opening hours, ticket prices, and reviews
-- 🗺️ **Maps Integration** – Open locations in Google Maps or Waze
-- 🎫 **Ticket Booking** – Select ticket types, quantities, visitor names, and visit dates
-- 💰 **Price Calculation** – Automatic subtotal, tax (6% SST), and total computation
-- 📋 **Booking History** – View upcoming and past bookings
+- 🔍 **Browse & Search:** Explore curated sites, events, food spots, and travel packages
+- 📍 **Destination Details:** Images, descriptions, opening hours, ticket prices, and reviews
+- 🗺️ **Maps Integration:** Open locations in Google Maps or Waze
+- 🎫 **Ticket Booking:** Select ticket types, quantities, visitor names, and visit dates
+- 💰 **Price Calculation:** Automatic subtotal, tax (6% SST), and total computation
+- 📋 **Booking History:** View upcoming and past bookings
+- 👤 **Authentication:** Sign up, log in, and manage your account (Firebase Auth)
+- 🛠️ **Admin Dashboard:** Manage sites, categories, and updates
+- 🏷️ **Categories:** Sites, Events, Packages, Food
+- 🧪 **Demo Mode:** Switch between in-memory and Firebase-backed repositories for testing
 
-### For Admins
-- 📊 **Dashboard** – Overview of sites and recent updates
-- ➕ **Site Management** – Add, edit, and delete cultural destinations
-- 🏷️ **Categories** – Organize sites into Sites, Events, Packages, and Food
+## Tech Stack
+
+- **Flutter 3.9.2**
+- **Dart**
+- **Firebase Auth & Cloud Firestore**
+- **Provider/ChangeNotifier** for state management
+- **Navigator 1.0** (MaterialPageRoute)
+- **url_launcher** (Maps/Waze links)
+- **intl** (Date formatting)
+
+## Project Structure
+
+```
+lib/
+  main.dart                 # App entry point with auth wrapper
+  config/                   # App-wide configuration and constants
+  core/                     # Core utilities and base classes
+  models/                   # User, Booking, Destination, Review, etc.
+  providers/                # Provider classes for state management
+  screens/                  # UI screens (admin, auth, booking, home, etc.)
+  services/                 # Auth, booking, and destination repositories
+  widgets/                  # Reusable UI widgets
+  firebase_options.dart     # Platform-specific Firebase config (auto-generated)
+```
+
+## Firebase Setup
+
+The app uses Firebase for authentication and data storage. Supported platforms:
+
+- **Android:** `google-services.json` in `android/app/`
+- **iOS:** `GoogleService-Info.plist` in `ios/Runner/`
+- **Web:** `lib/firebase_options.dart` (auto-generated)
+
+To update Firebase config:
+1. Use the [FlutterFire CLI](https://firebase.flutter.dev/docs/cli/) to regenerate `firebase_options.dart` after making changes in the Firebase Console.
+2. Ensure platform-specific config files are present in the correct directories.
 
 ## Getting Started
 
 ### Prerequisites
 - Flutter SDK 3.9.2+
 - Dart SDK
+- Firebase project (see above)
 
-### Installation
+### Installation & Running
 
 ```bash
 # Clone the repository
 git clone https://github.com/C4bbage64/discover_malaysia.git
 cd discover_malaysia
-
-# Install dependencies
 flutter pub get
-
-# Run the app
-flutter run
 ```
 
-### Demo Credentials
-
-| Role  | Email                          | Password      |
-|-------|--------------------------------|---------------|
-| User  | `john@example.com`             | `password123` |
-| Admin | `admin@discovermalaysia.com`   | `admin123`    |
-
-## Project Structure
-
+#### Android
 ```
-lib/
-├── main.dart                 # App entry point with auth wrapper
-├── models/
-│   ├── booking.dart          # Booking, TicketType, TicketSelection
-│   ├── destination.dart      # Destination, TicketPrice, DayHours
-│   ├── review.dart           # Review model
-│   └── user.dart             # User, UserRole
-├── screens/
-│   ├── admin/                # Admin dashboard, site list, edit form
-│   ├── auth/                 # Login and register pages
-│   ├── booking_form_page.dart
-│   ├── bookings_page.dart
-│   ├── home_page.dart
-│   ├── main_navigation.dart
-│   ├── profile_page.dart
-│   └── site_details_page.dart
-└── services/
-    ├── auth_service.dart           # Authentication logic
-    ├── booking_repository.dart     # Booking CRUD & price calc
-    └── destination_repository.dart # Destination CRUD & search
+flutter emulators --launch <emulator_id>
+flutter run -d <emulator_id>
 ```
 
-## Tech Stack
+#### iOS
+```
+open ios/Runner.xcworkspace
+flutter run -d <device_id>
+```
 
-- **Framework:** Flutter
-- **State Management:** StatefulWidget (vanilla Flutter)
-- **Navigation:** Navigator 1.0 with MaterialPageRoute
-- **External Packages:**
-  - `url_launcher` – Open Maps/Waze links
-  - `intl` – Date formatting
+#### Web
+```
+flutter run -d chrome
+```
+
+## Development Workflow
+
+1. Configure Firebase for all platforms (see above).
+2. Use the `main.dart` entry point to launch the app.
+3. Use providers and repositories for all data access and state management.
+4. To switch between demo (in-memory) and Firebase mode, update the repository provider in `lib/providers/`.
+
+## Troubleshooting
+
+- **Blank screen or auth errors on Web:** Double-check API keys in `firebase_options.dart` and Google Cloud Console.
+- **Emulator issues:** Ensure Android/iOS emulators are running and recognized by Flutter.
+- **Firebase errors:** Use `debugPrint` for error logging in services.
 
 ## Roadmap
 
@@ -94,6 +114,15 @@ lib/
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+6. For upstream sync, add the main repo as `upstream` and merge as needed.
+
+## References
+
+- [Flutter Documentation](https://docs.flutter.dev/)
+- [Firebase for Flutter](https://firebase.flutter.dev/)
+
+---
+For more details, see the `docs/` directory for architecture, data models, and user flows.
 
 ## License
 
