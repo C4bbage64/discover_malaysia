@@ -28,6 +28,42 @@ class TransitProvider extends ChangeNotifier {
     await loadStations();
   }
 
+  Future<void> addStation(TransitStation station) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      await _repository.addStation(station);
+      await loadStations(); // Refresh list
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateStation(TransitStation station) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      await _repository.updateStation(station);
+      await loadStations(); // Refresh list
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteStation(String id) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      await _repository.deleteStation(id);
+      await loadStations(); // Refresh list
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Get nearby stations
   List<TransitStation> getNearby(double lat, double lng, {int limit = 3}) {
     if (_stations.isEmpty) return [];

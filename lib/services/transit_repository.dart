@@ -24,6 +24,16 @@ class TransitRepository {
     await _firestore.collection(_collection).add(station.toMap());
   }
 
+  /// Update an existing station
+  Future<void> updateStation(TransitStation station) async {
+    await _firestore.collection(_collection).doc(station.id).update(station.toMap());
+  }
+
+  /// Delete a station
+  Future<void> deleteStation(String id) async {
+    await _firestore.collection(_collection).doc(id).delete();
+  }
+
   /// Seed initial data
   Future<void> seedDefaults() async {
     try {

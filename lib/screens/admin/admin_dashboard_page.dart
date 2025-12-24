@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/destination.dart';
 
 import 'admin_site_list_page.dart';
+import 'admin_transit_list_page.dart';
 import 'package:provider/provider.dart';
 import '../../providers/destination_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -188,6 +189,20 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   ),
                 ),
                 const SizedBox(width: 12),
+                Expanded(
+                  child: _buildActionCard(
+                    icon: Icons.directions_subway,
+                    title: 'Manage Transit',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminTransitListPage(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
