@@ -18,6 +18,13 @@ class BookingRepository implements IBookingRepository {
   /// Tax rate from AppConfig
   double get taxRate => AppConfig.taxRate;
 
+  /// Get all bookings (Admin only)
+  @override
+  Future<List<Booking>> getAllBookings() async {
+    return List<Booking>.from(_bookings)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
   /// Get all bookings for a user
   @override
   List<Booking> getBookingsForUser(String userId) {

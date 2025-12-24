@@ -17,6 +17,23 @@ class FirebaseBookingRepository implements IBookingRepository {
   double get taxRate => AppConfig.taxRate;
 
   @override
+  Future<List<Booking>> getAllBookings() async {
+    try {
+      // Try ordered query
+      final snapshot = await _bookingsCollection
+          .orderBy('createdAt', descending: true)
+          .get();
+      return snapshot.docs.map((doc) => _fromFirestore(doc)).toList();
+    } catch (e) {
+      // Fallback if index missing or error
+      final snapshot = await _bookingsCollection.get();
+      final bookings = snapshot.docs.map((doc) => _fromFirestore(doc)).toList();
+      bookings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return bookings;
+    }
+  }
+
+  @override
   List<Booking> getBookingsForUser(String userId) {
     // This is called synchronously by the provider, but Firestore is async.
     // For a real app, you'd refactor this to async or use streams.

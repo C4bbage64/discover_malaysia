@@ -3,6 +3,7 @@ import '../../models/destination.dart';
 
 import 'admin_site_list_page.dart';
 import 'admin_transit_list_page.dart';
+import 'admin_bookings_page.dart';
 import 'package:provider/provider.dart';
 import '../../providers/destination_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -216,7 +217,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const AdminSiteListPage(),
+                          builder: (context) => AdminSiteListPage(),
                         ),
                       ).then((_) => setState(() {}));
                     },
@@ -225,15 +226,15 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildActionCard(
-                    icon: Icons.list,
-                    title: 'View All',
+                    icon: Icons.calendar_month,
+                    title: 'Bookings',
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const AdminSiteListPage(),
+                          builder: (context) => const AdminBookingsPage(),
                         ),
-                      ).then((_) => setState(() {}));
+                      );
                     },
                   ),
                 ),
@@ -254,7 +255,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const AdminSiteListPage(),
+                        builder: (context) => AdminSiteListPage(),
                       ),
                     ).then((_) => setState(() {}));
                   },

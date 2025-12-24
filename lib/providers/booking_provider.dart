@@ -137,6 +137,29 @@ class BookingProvider extends ChangeNotifier {
     return _repository.getById(id);
   }
 
+  /// Get all bookings (Admin only)
+  Future<List<Booking>> getAllBookings() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      // If using Firebase, we might want to use the firebase repo directly if _repository is generic wrapper
+      // But _repository is initialized based on config, so it should be fine.
+      // However, check constructor:
+      // _repository = repository ?? (AppConfig.useFirebase ? FirebaseBookingRepository() : BookingRepository())
+      // So _repository IS the correct instance.
+      
+      final bookings = await _repository.getAllBookings();
+      _isLoading = false;
+      notifyListeners();
+      return bookings;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return [];
+    }
+  }
+
   /// Calculate price breakdown
   PriceBreakdown calculatePrice({
     required Destination destination,

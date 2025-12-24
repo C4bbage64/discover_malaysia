@@ -28,6 +28,9 @@ class PriceBreakdown {
 /// Abstract interface for booking operations
 /// Allows for easy swapping between mock and real implementations
 abstract class IBookingRepository {
+  /// Get all bookings (Admin only)
+  Future<List<Booking>> getAllBookings();
+
   /// Get all bookings for a user
   List<Booking> getBookingsForUser(String userId);
 
