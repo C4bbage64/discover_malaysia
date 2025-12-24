@@ -67,13 +67,13 @@ class DestinationRepository implements IDestinationRepository {
 
   /// Add a new destination (admin only)
   @override
-  void addDestination(Destination destination) {
+  Future<void> addDestination(Destination destination) async {
     _destinations.add(destination);
   }
 
   /// Update an existing destination (admin only)
   @override
-  void updateDestination(Destination destination) {
+  Future<void> updateDestination(Destination destination) async {
     final index = _destinations.indexWhere((d) => d.id == destination.id);
     if (index != -1) {
       _destinations[index] = destination;
@@ -82,7 +82,7 @@ class DestinationRepository implements IDestinationRepository {
 
   /// Delete a destination (admin only)
   @override
-  void deleteDestination(String id) {
+  Future<void> deleteDestination(String id) async {
     _destinations.removeWhere((d) => d.id == id);
   }
 

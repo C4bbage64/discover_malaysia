@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/destination.dart';
-import '../../services/destination_repository.dart';
+import 'package:provider/provider.dart';
+import '../../providers/destination_provider.dart';
 import 'admin_edit_site_page.dart';
 
 class AdminSiteListPage extends StatefulWidget {
@@ -11,11 +12,13 @@ class AdminSiteListPage extends StatefulWidget {
 }
 
 class _AdminSiteListPageState extends State<AdminSiteListPage> {
-  final _destinationRepo = DestinationRepository();
   DestinationCategory? _filterCategory;
 
   List<Destination> get _filteredDestinations {
-    var destinations = _destinationRepo.getAllDestinations();
+    // Watch provider
+    final provider = context.watch<DestinationProvider>();
+    var destinations = provider.allDestinations;
+    
     if (_filterCategory != null) {
       destinations = destinations
           .where((d) => d.category == _filterCategory)
@@ -27,6 +30,7 @@ class _AdminSiteListPageState extends State<AdminSiteListPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Only invoke getter once per build
     final destinations = _filteredDestinations;
 
     return Scaffold(
@@ -83,7 +87,8 @@ class _AdminSiteListPageState extends State<AdminSiteListPage> {
             MaterialPageRoute(
               builder: (context) => const AdminEditSitePage(),
             ),
-          ).then((_) => setState(() {}));
+          );
+          // setState not needed as Provider handles listing updates
         },
         icon: const Icon(Icons.add),
         label: const Text('Add Site'),
@@ -101,7 +106,6 @@ class _AdminSiteListPageState extends State<AdminSiteListPage> {
         return 'Packages';
       case DestinationCategory.food:
         return 'Food & Dining';
-
     }
   }
 
@@ -116,7 +120,7 @@ class _AdminSiteListPageState extends State<AdminSiteListPage> {
             MaterialPageRoute(
               builder: (context) => AdminEditSitePage(destination: destination),
             ),
-          ).then((_) => setState(() {}));
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -195,7 +199,7 @@ class _AdminSiteListPageState extends State<AdminSiteListPage> {
                         builder: (context) =>
                             AdminEditSitePage(destination: destination),
                       ),
-                    ).then((_) => setState(() {}));
+                    );
                   } else if (value == 'delete') {
                     _confirmDelete(destination);
                   }
@@ -240,7 +244,6 @@ class _AdminSiteListPageState extends State<AdminSiteListPage> {
         return Colors.green;
       case DestinationCategory.food:
         return Colors.orange;
-
     }
   }
 
@@ -270,12 +273,16 @@ class _AdminSiteListPageState extends State<AdminSiteListPage> {
       ),
     );
 
-    if (confirm == true) {
-      _destinationRepo.deleteDestination(destination.id);
-      setState(() {});
-      if (mounted) {
+    if (confirm == true && mounted) {
+      try {
+        context.read<DestinationProvider>().deleteDestination(destination.id);
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${destination.name} deleted')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }

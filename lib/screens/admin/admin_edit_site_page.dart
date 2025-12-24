@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/destination.dart';
-import '../../services/destination_repository.dart';
+import 'package:provider/provider.dart';
+import '../../providers/destination_provider.dart';
 import '../../services/auth_service.dart';
 
 class AdminEditSitePage extends StatefulWidget {
@@ -14,9 +15,8 @@ class AdminEditSitePage extends StatefulWidget {
 
 class _AdminEditSitePageState extends State<AdminEditSitePage> {
   final _formKey = GlobalKey<FormState>();
-  final _destinationRepo = DestinationRepository();
-  final _authService = AuthService();
-
+  final _authService = AuthService(); // Keep this for user ID
+  
   late TextEditingController _nameController;
   late TextEditingController _shortDescController;
   late TextEditingController _detailedDescController;
@@ -457,10 +457,11 @@ class _AdminEditSitePageState extends State<AdminEditSitePage> {
         updatedByAdminId: _authService.currentUser?.id,
       );
 
+      final provider = context.read<DestinationProvider>();
       if (_isEditing) {
-        _destinationRepo.updateDestination(destination);
+        await provider.updateDestination(destination);
       } else {
-        _destinationRepo.addDestination(destination);
+        await provider.addDestination(destination);
       }
 
       if (mounted) {

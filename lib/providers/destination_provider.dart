@@ -105,21 +105,51 @@ class DestinationProvider extends ChangeNotifier {
   // ============ Admin Actions ============
 
   /// Add a new destination (admin only)
-  void addDestination(Destination destination) {
-    _repository.addDestination(destination);
-    notifyListeners();
+  Future<void> addDestination(Destination destination) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      await _repository.addDestination(destination);
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   /// Update an existing destination (admin only)
-  void updateDestination(Destination destination) {
-    _repository.updateDestination(destination);
-    notifyListeners();
+  Future<void> updateDestination(Destination destination) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      await _repository.updateDestination(destination);
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   /// Delete a destination (admin only)
-  void deleteDestination(String id) {
-    _repository.deleteDestination(id);
-    notifyListeners();
+  Future<void> deleteDestination(String id) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      await _repository.deleteDestination(id);
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // ============ Search & Filter ============
