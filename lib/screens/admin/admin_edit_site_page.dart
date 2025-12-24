@@ -403,6 +403,7 @@ class _AdminEditSitePageState extends State<AdminEditSitePage> {
         return 'Packages';
       case DestinationCategory.food:
         return 'Food & Dining';
+
     }
   }
 

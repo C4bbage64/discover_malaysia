@@ -101,6 +101,7 @@ class _AdminSiteListPageState extends State<AdminSiteListPage> {
         return 'Packages';
       case DestinationCategory.food:
         return 'Food & Dining';
+
     }
   }
 
@@ -239,6 +240,7 @@ class _AdminSiteListPageState extends State<AdminSiteListPage> {
         return Colors.green;
       case DestinationCategory.food:
         return Colors.orange;
+
     }
   }
 

@@ -24,7 +24,7 @@ class DestinationProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
       
-      await (_repository as FirebaseDestinationRepository).initialize();
+      await _repository.initialize();
       
       _isLoading = false;
       notifyListeners();
@@ -81,7 +81,7 @@ class DestinationProvider extends ChangeNotifier {
       // If we don't have cached reviews for this destination, start streaming them
       if (!_reviewsCache.containsKey(destinationId)) {
         _reviewsCache[destinationId] = []; // Initialize empty
-        (_repository as FirebaseDestinationRepository)
+        _repository
             .streamReviews(destinationId)
             .listen((reviews) {
           _reviewsCache[destinationId] = reviews;
@@ -96,7 +96,7 @@ class DestinationProvider extends ChangeNotifier {
   /// Add a new review
   Future<void> addReview(Review review) async {
     if (_repository is FirebaseDestinationRepository) {
-      await (_repository as FirebaseDestinationRepository).addReview(review);
+      await _repository.addReview(review);
     } else {
       // Logic for non-Firebase repository if needed
     }
@@ -151,7 +151,7 @@ class DestinationProvider extends ChangeNotifier {
         // Get dummy data from the local repository
         final dummyData = DestinationRepository().getAllDestinations();
         
-        await (_repository as FirebaseDestinationRepository).seedData(dummyData);
+        await _repository.seedData(dummyData);
         
         _isLoading = false;
         notifyListeners();

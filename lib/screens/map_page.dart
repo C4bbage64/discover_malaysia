@@ -196,6 +196,7 @@ class _MapPageState extends State<MapPage> {
         return Icons.event;
       case DestinationCategory.packages:
         return Icons.inventory_2;
+
     }
   }
 

@@ -1,6 +1,15 @@
-import 'package:flutter/material.dart';
-import '../models/booking.dart';
-import '../config/app_config.dart';
+import 'package:flutter/material.dart'; // Added back
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:latlong2/latlong.dart';
+import '../models/booking.dart'; // Added back
+
+import '../config/app_config.dart'; // Added back
+import '../providers/destination_provider.dart';
+
+/// Page shown after a booking is successfully created
+import '../models/transit_station.dart';
+import '../providers/transit_provider.dart';
 
 /// Page shown after a booking is successfully created
 class BookingConfirmationPage extends StatelessWidget {
@@ -14,6 +23,23 @@ class BookingConfirmationPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final destinationProvider = context.read<DestinationProvider>();
+    final transitProvider = context.read<TransitProvider>();
+    
+    // Find the booked destination to get its coordinates
+    final bookedDestination = destinationProvider.getById(booking.destinationId);
+    
+    // Find nearby transit stations
+    List<TransitStation> nearbyTransit = [];
+    if (bookedDestination != null && 
+        bookedDestination.latitude != 0 && 
+        bookedDestination.longitude != 0) {
+      
+      nearbyTransit = transitProvider.getNearby(
+        bookedDestination.latitude, 
+        bookedDestination.longitude,
+      );
+    }
     
     return Scaffold(
       body: SafeArea(
@@ -169,6 +195,69 @@ class BookingConfirmationPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
+              
+              // Nearby Transit Section
+              if (nearbyTransit.isNotEmpty && bookedDestination != null) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Nearby Transit Stations',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...nearbyTransit.map((transit) {
+                  final km = const Distance().as(
+                    LengthUnit.Kilometer,
+                    LatLng(bookedDestination.latitude, bookedDestination.longitude),
+                    LatLng(transit.latitude, transit.longitude),
+                  );
+                  
+                  return Card(
+                    elevation: 1,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          transit.type == 'train' ? Icons.train : Icons.directions_bus, 
+                          color: Colors.blue,
+                        ),
+                      ),
+                      title: Text(transit.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${km.toStringAsFixed(1)} km away'),
+                          if (transit.lineInfo != null)
+                            Text(transit.lineInfo!, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                        ],
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.map, color: Colors.blue),
+                        onPressed: () async {
+                          final url = Uri.parse(
+                            'https://www.google.com/maps/search/?api=1&query=${transit.latitude},${transit.longitude}',
+                          );
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                      ),
+                    ),
+                  );
+                }),
+                const SizedBox(height: 24),
+              ],
               
               // Info note
               Container(
