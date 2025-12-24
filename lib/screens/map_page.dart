@@ -1,11 +1,14 @@
 
 import 'package:discover_malaysia/models/destination.dart';
+import 'package:discover_malaysia/models/transit_station.dart';
 import 'package:discover_malaysia/providers/destination_provider.dart';
+import 'package:discover_malaysia/providers/transit_provider.dart';
 import 'package:discover_malaysia/screens/site_details_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -32,6 +35,7 @@ class _MapPageState extends State<MapPage> {
   @override
   Widget build(BuildContext context) {
     final destinations = context.watch<DestinationProvider>().allDestinations;
+    final transitStations = context.watch<TransitProvider>().stations;
     
     // Filter destinations based on search query and coordinates
     final mapDestinations = destinations.where((d) {
@@ -44,6 +48,133 @@ class _MapPageState extends State<MapPage> {
       return d.name.toLowerCase().contains(query) || 
              d.shortDescription.toLowerCase().contains(query);
     }).toList();
+
+    // Filter transit stations based on search query
+    final mapTransits = transitStations.where((s) {
+      if (_searchQuery.isEmpty) return true;
+      final query = _searchQuery.toLowerCase();
+      return s.name.toLowerCase().contains(query) || 
+             (s.lineInfo?.toLowerCase().contains(query) ?? false);
+    }).toList();
+
+    final allMarkers = <Marker>[
+      // Transit Markers (Bottom Layer)
+      ...mapTransits.map((station) {
+        return Marker(
+          point: LatLng(station.latitude, station.longitude),
+          width: 60,
+          height: 60,
+          child: GestureDetector(
+            onTap: () => _showTransitDetails(station),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                    border: Border.all(color: Colors.blue, width: 2),
+                  ),
+                  child: Icon(
+                    station.type == 'train' ? Icons.train : Icons.directions_bus,
+                    color: Colors.blue,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    station.name,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
+      // Destination Markers (Top Layer)
+      ...mapDestinations.map((destination) {
+        return Marker(
+          point: LatLng(destination.latitude, destination.longitude),
+          width: 60,
+          height: 60,
+          child: GestureDetector(
+            onTap: () => _showDestinationDetails(destination),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    _getCategoryIcon(destination.category),
+                    color: Theme.of(context).primaryColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    destination.name,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
+    ];
 
     return Scaffold(
       body: Stack(
@@ -63,62 +194,7 @@ class _MapPageState extends State<MapPage> {
                 userAgentPackageName: 'com.example.discover_malaysia',
               ),
               MarkerLayer(
-                markers: mapDestinations.map((destination) {
-                  return Marker(
-                    point: LatLng(destination.latitude, destination.longitude),
-                    width: 60,
-                    height: 60,
-                    child: GestureDetector(
-                      onTap: () => _showDestinationDetails(destination),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              _getCategoryIcon(destination.category),
-                              color: Theme.of(context).primaryColor,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 2,
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              destination.name,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
+                markers: allMarkers,
               ),
               RichAttributionWidget(
                 attributions: [
@@ -288,6 +364,78 @@ class _MapPageState extends State<MapPage> {
                     );
                   },
                   child: const Text('View Details'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showTransitDetails(TransitStation station) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      station.type == 'train' ? Icons.train : Icons.directions_bus,
+                      color: Colors.blue,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          station.name,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        if (station.lineInfo != null)
+                          Text(
+                            station.lineInfo!,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    final url = Uri.parse(
+                      'https://www.google.com/maps/search/?api=1&query=${station.latitude},${station.longitude}',
+                    );
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                  icon: const Icon(Icons.directions),
+                  label: const Text('Get Directions'),
                 ),
               ),
             ],
