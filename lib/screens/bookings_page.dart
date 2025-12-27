@@ -34,6 +34,11 @@ class _BookingsPageState extends State<BookingsPage>
     final bookingProvider = context.watch<BookingProvider>();
     final user = authProvider.user;
 
+    // Ensure bookingProvider streams are initialized for the logged-in user
+    if (user != null) {
+      bookingProvider.initForUser(user.id);
+    }
+
     if (user == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('My Bookings')),

@@ -39,6 +39,8 @@ class BookingProvider extends ChangeNotifier {
     if (!AppConfig.useFirebase || firebaseRepo == null) return;
     if (_currentUserId == userId) return; // Already initialized
 
+    debugPrint('[BookingProvider] Initializing for userId: $userId');
+
     // Cancel previous subscriptions
     _allBookingsSubscription?.cancel();
     _upcomingSubscription?.cancel();
@@ -46,24 +48,33 @@ class BookingProvider extends ChangeNotifier {
 
     _currentUserId = userId;
 
-    // Listen to all bookings
+    // Listen to all bookings (Single Source of Truth)
+    // We filter upcoming/past client-side to avoid complex Firestore indexes
     _allBookingsSubscription =
         firebaseRepo.streamBookingsForUser(userId).listen((bookings) {
+      debugPrint(
+          '[BookingProvider] streamBookingsForUser received: ${bookings.length} bookings');
+      
       _allBookings = bookings;
-      notifyListeners();
-    });
+      
+      final now = DateTime.now();
+      _upcomingBookings = bookings.where((b) {
+        return b.visitDate.isAfter(now) && b.status != BookingStatus.cancelled;
+      }).toList()
+        ..sort((a, b) => a.visitDate.compareTo(b.visitDate));
 
-    // Listen to upcoming bookings
-    _upcomingSubscription =
-        firebaseRepo.streamUpcomingBookings(userId).listen((bookings) {
-      _upcomingBookings = bookings;
-      notifyListeners();
-    });
+      _pastBookings = bookings.where((b) {
+        // Past includes completed, cancelled, or dates in past
+        if (b.status == BookingStatus.cancelled) return false; // Usually past doesn't show cancelled? 
+        // Wait, original logic for past: visitDate < now
+        return b.visitDate.isBefore(now);
+      }).toList()
+        ..sort((a, b) => b.visitDate.compareTo(a.visitDate));
 
-    // Listen to past bookings
-    _pastSubscription =
-        firebaseRepo.streamPastBookings(userId).listen((bookings) {
-      _pastBookings = bookings;
+      notifyListeners();
+    }, onError: (e) {
+      debugPrint('[BookingProvider] Error in stream: $e');
+      _error = 'Failed to load bookings: $e';
       notifyListeners();
     });
   }
@@ -124,6 +135,29 @@ class BookingProvider extends ChangeNotifier {
       return _allBookings.where((b) => b.id == id).firstOrNull;
     }
     return _repository.getById(id);
+  }
+
+  /// Get all bookings (Admin only)
+  Future<List<Booking>> getAllBookings() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      // If using Firebase, we might want to use the firebase repo directly if _repository is generic wrapper
+      // But _repository is initialized based on config, so it should be fine.
+      // However, check constructor:
+      // _repository = repository ?? (AppConfig.useFirebase ? FirebaseBookingRepository() : BookingRepository())
+      // So _repository IS the correct instance.
+      
+      final bookings = await _repository.getAllBookings();
+      _isLoading = false;
+      notifyListeners();
+      return bookings;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return [];
+    }
   }
 
   /// Calculate price breakdown

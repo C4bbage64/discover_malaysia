@@ -25,14 +25,25 @@ class TicketPrice {
   });
 
   /// Returns a map of ticket type label to price
-  Map<String, double> toMap() => {
-        'Adult': adult,
-        'Child': child,
-        'Senior': senior,
-        'Student': student,
-        'Foreigner Adult': foreignerAdult,
-        'Foreigner Child': foreignerChild,
+  Map<String, dynamic> toMap() => {
+        'adult': adult,
+        'child': child,
+        'senior': senior,
+        'student': student,
+        'foreignerAdult': foreignerAdult,
+        'foreignerChild': foreignerChild,
       };
+
+  factory TicketPrice.fromMap(Map<String, dynamic> map) {
+    return TicketPrice(
+      adult: (map['adult'] as num?)?.toDouble() ?? 0.0,
+      child: (map['child'] as num?)?.toDouble() ?? 0.0,
+      senior: (map['senior'] as num?)?.toDouble() ?? 0.0,
+      student: (map['student'] as num?)?.toDouble() ?? 0.0,
+      foreignerAdult: (map['foreignerAdult'] as num?)?.toDouble() ?? 0.0,
+      foreignerChild: (map['foreignerChild'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
 
   /// Check if entry is free
   bool get isFree =>
@@ -55,6 +66,20 @@ class DayHours {
     required this.hours,
     this.isClosed = false,
   });
+
+  Map<String, dynamic> toMap() => {
+        'day': day,
+        'hours': hours,
+        'isClosed': isClosed,
+      };
+
+  factory DayHours.fromMap(Map<String, dynamic> map) {
+    return DayHours(
+      day: map['day'] ?? '',
+      hours: map['hours'] ?? '',
+      isClosed: map['isClosed'] ?? false,
+    );
+  }
 }
 
 /// A cultural destination/site
@@ -125,5 +150,60 @@ class Destination {
       return wazeUrl!;
     }
     return 'https://waze.com/ul?ll=$latitude,$longitude&navigate=yes';
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'shortDescription': shortDescription,
+      'detailedDescription': detailedDescription,
+      'category': category.name, // Save enum as string
+      'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
+      'googleMapsUrl': googleMapsUrl,
+      'wazeUrl': wazeUrl,
+      'images': images,
+      'openingHours': openingHours.map((h) => h.toMap()).toList(),
+      'ticketPrice': ticketPrice.toMap(),
+      'rating': rating,
+      'reviewCount': reviewCount,
+      'distanceKm': distanceKm,
+      'lastUpdatedAt': lastUpdatedAt?.millisecondsSinceEpoch,
+      'updatedByAdminId': updatedByAdminId,
+    };
+  }
+
+  factory Destination.fromMap(Map<String, dynamic> map, {String? id}) {
+    return Destination(
+      id: id ?? map['id'] ?? '',
+      name: map['name'] ?? '',
+      shortDescription: map['shortDescription'] ?? '',
+      detailedDescription: map['detailedDescription'] ?? '',
+      category: DestinationCategory.values.firstWhere(
+        (e) => e.name == map['category'],
+        orElse: () => DestinationCategory.sites,
+      ),
+      address: map['address'] ?? '',
+      latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
+      googleMapsUrl: map['googleMapsUrl'],
+      wazeUrl: map['wazeUrl'],
+      images: List<String>.from(map['images'] ?? []),
+      openingHours: (map['openingHours'] as List<dynamic>?)
+              ?.map((e) => DayHours.fromMap(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      ticketPrice: TicketPrice.fromMap(
+          map['ticketPrice'] as Map<String, dynamic>? ?? {}),
+      rating: (map['rating'] as num?)?.toDouble() ?? 0.0,
+      reviewCount: (map['reviewCount'] as num?)?.toInt() ?? 0,
+      distanceKm: (map['distanceKm'] as num?)?.toDouble(),
+      lastUpdatedAt: map['lastUpdatedAt'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['lastUpdatedAt'])
+          : null,
+      updatedByAdminId: map['updatedByAdminId'],
+    );
   }
 }

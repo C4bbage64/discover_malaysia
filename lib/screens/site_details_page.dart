@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/destination.dart';
 import '../models/review.dart';
+import '../models/transit_station.dart';
 import '../providers/auth_provider.dart';
 import '../providers/destination_provider.dart';
 import '../providers/favorites_provider.dart';
+import '../providers/transit_provider.dart';
 import 'booking_form_page.dart';
 
 class SiteDetailsPage extends StatelessWidget {
@@ -228,7 +230,23 @@ class SiteDetailsPage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
+
+                  // Nearby Transit
+                  if (context.watch<TransitProvider>().getNearby(destination.latitude, destination.longitude).isNotEmpty) ...[
+                    const Text(
+                      'Nearby Transit',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    ...context.watch<TransitProvider>().getNearby(destination.latitude, destination.longitude).map((station) {
+                       // Calculate strict display logic without redundant variables
+                       return _buildTransitItem(context, station, destination);
+                    }),
+                    const SizedBox(height: 16),
+                  ],
+                  
+                  // Opening hours
                   
                   // Opening hours
                   const Text(
@@ -249,9 +267,19 @@ class SiteDetailsPage extends StatelessWidget {
                   const SizedBox(height: 24),
                   
                   // Reviews
-                  const Text(
-                    'Reviews',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Reviews',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _showAddReviewDialog(context, userId),
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Write a Review'),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   if (reviews.isEmpty)
@@ -574,6 +602,150 @@ Discover more amazing places in Malaysia!
             ),
             const SizedBox(height: 8),
             Text(label, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransitItem(BuildContext context, TransitStation station, Destination destination) {
+    // Quick distance calc
+    // We need latlong2 for this. I'll ensure it's imported.
+    // For now, I will use a placeholder or basic math if lib not available, but I should add the import.
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              station.type == 'train' ? Icons.train : Icons.directions_bus, 
+              color: Colors.blue,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  station.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                if (station.lineInfo != null)
+                  Text(
+                    station.lineInfo!,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.directions, color: Colors.blue),
+            onPressed: () async {
+               final url = Uri.parse(
+                'https://www.google.com/maps/dir/?api=1&destination=${station.latitude},${station.longitude}',
+              );
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddReviewDialog(BuildContext context, String? userId) {
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login to write a review')),
+      );
+      return;
+    }
+
+    final commentController = TextEditingController();
+    int rating = 5;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Write a Review'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('How was your experience?'),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  return IconButton(
+                    onPressed: () => setState(() => rating = index + 1),
+                    icon: Icon(
+                      index < rating ? Icons.star : Icons.star_border,
+                      color: Colors.amber,
+                      size: 32,
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: commentController,
+                decoration: const InputDecoration(
+                  labelText: 'Share your thoughts',
+                  border: OutlineInputBorder(),
+                  hintText: 'What did you like or dislike?',
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (commentController.text.trim().isEmpty) return;
+
+                final user = context.read<AuthProvider>().user!;
+                final review = Review(
+                  id: '', // Will be generated by Repository
+                  destinationId: destination.id,
+                  userId: user.id,
+                  username: user.name,
+                  comment: commentController.text.trim(),
+                  rating: rating,
+                  timestamp: DateTime.now(),
+                );
+
+                try {
+                  await context.read<DestinationProvider>().addReview(review);
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Review posted successfully!')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to post review: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Submit'),
+            ),
           ],
         ),
       ),

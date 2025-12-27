@@ -18,6 +18,31 @@ class Review {
     required this.timestamp,
   });
 
+  Map<String, dynamic> toMap() {
+    return {
+      'destinationId': destinationId,
+      'userId': userId,
+      'username': username,
+      'comment': comment,
+      'rating': rating,
+      'timestamp': timestamp,
+    };
+  }
+
+  factory Review.fromMap(Map<String, dynamic> map, {String? id}) {
+    return Review(
+      id: id ?? '',
+      destinationId: map['destinationId'] ?? '',
+      userId: map['userId'] ?? '',
+      username: map['username'] ?? 'Anonymous',
+      comment: map['comment'] ?? '',
+      rating: (map['rating'] ?? 5).toInt(),
+      timestamp: (map['timestamp'] is DateTime)
+          ? map['timestamp']
+          : (map['timestamp'] as dynamic)?.toDate() ?? DateTime.now(),
+    );
+  }
+
   /// Format timestamp as relative time (e.g., "3 hours ago")
   String get timeAgo {
     final now = DateTime.now();

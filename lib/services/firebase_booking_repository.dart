@@ -17,6 +17,23 @@ class FirebaseBookingRepository implements IBookingRepository {
   double get taxRate => AppConfig.taxRate;
 
   @override
+  Future<List<Booking>> getAllBookings() async {
+    try {
+      // Try ordered query
+      final snapshot = await _bookingsCollection
+          .orderBy('createdAt', descending: true)
+          .get();
+      return snapshot.docs.map((doc) => _fromFirestore(doc)).toList();
+    } catch (e) {
+      // Fallback if index missing or error
+      final snapshot = await _bookingsCollection.get();
+      final bookings = snapshot.docs.map((doc) => _fromFirestore(doc)).toList();
+      bookings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return bookings;
+    }
+  }
+
+  @override
   List<Booking> getBookingsForUser(String userId) {
     // This is called synchronously by the provider, but Firestore is async.
     // For a real app, you'd refactor this to async or use streams.
@@ -52,7 +69,7 @@ class FirebaseBookingRepository implements IBookingRepository {
   Stream<List<Booking>> streamBookingsForUser(String userId) {
     return _bookingsCollection
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
+        // .orderBy('createdAt', descending: true) // Temporarily removed to fix "Requires Index" error
         .snapshots()
         .map((snapshot) =>
             snapshot.docs.map((doc) => _fromFirestore(doc)).toList());
@@ -64,11 +81,12 @@ class FirebaseBookingRepository implements IBookingRepository {
     return _bookingsCollection
         .where('userId', isEqualTo: userId)
         .where('visitDate', isGreaterThan: Timestamp.fromDate(now))
-        .where('status', isNotEqualTo: 'cancelled')
         .orderBy('visitDate')
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => _fromFirestore(doc)).toList());
+        .map((snapshot) => snapshot.docs
+            .map((doc) => _fromFirestore(doc))
+            .where((b) => b.status != BookingStatus.cancelled)
+            .toList());
   }
 
   /// Stream of past bookings for a user

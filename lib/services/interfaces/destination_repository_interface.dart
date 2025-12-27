@@ -28,11 +28,11 @@ abstract class IDestinationRepository {
   // ============ ADMIN METHODS ============
 
   /// Add a new destination (admin only)
-  void addDestination(Destination destination);
+  Future<void> addDestination(Destination destination);
 
   /// Update an existing destination (admin only)
-  void updateDestination(Destination destination);
+  Future<void> updateDestination(Destination destination);
 
   /// Delete a destination (admin only)
-  void deleteDestination(String id);
+  Future<void> deleteDestination(String id);
 }

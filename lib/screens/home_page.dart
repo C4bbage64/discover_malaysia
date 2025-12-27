@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/destination.dart';
 import '../providers/destination_provider.dart';
+import '../providers/transit_provider.dart';
 import 'site_details_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -18,6 +19,7 @@ class _HomePageState extends State<HomePage> {
   String _searchQuery = '';
 
   List<Destination> _getFilteredDestinations(DestinationProvider provider) {
+    // Basic list from provider
     var destinations = provider.allDestinations;
     
     // Filter by category
@@ -67,6 +69,27 @@ class _HomePageState extends State<HomePage> {
         ),
         title: const Text('Discover Malaysia'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.cloud_upload_outlined),
+            tooltip: 'Debug: Seed Data',
+            onPressed: () async {
+              try {
+                // Using TransitProvider to seed the new transits collection
+                await context.read<TransitProvider>().seed();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Transit Data Seeded! Check a booking confirmation to see changes.')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
+            },
+          ),
           IconButton(
             onPressed: () {},
             icon: const Icon(Icons.notifications_outlined, size: 32),
@@ -201,6 +224,7 @@ class _HomePageState extends State<HomePage> {
         return 'Packages';
       case DestinationCategory.food:
         return 'Food & Dining';
+
     }
   }
 

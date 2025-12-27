@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/destination.dart';
 import '../models/review.dart';
 import '../services/destination_repository.dart';
+import '../services/firebase_destination_repository.dart';
 import '../services/interfaces/destination_repository_interface.dart';
 
 /// ChangeNotifier wrapper for destination state
@@ -14,7 +15,21 @@ class DestinationProvider extends ChangeNotifier {
   String _searchQuery = '';
 
   DestinationProvider({IDestinationRepository? repository})
-      : _repository = repository ?? DestinationRepository();
+      : _repository = repository ?? FirebaseDestinationRepository() {
+    _initializeRepository();
+  }
+
+  Future<void> _initializeRepository() async {
+    if (_repository is FirebaseDestinationRepository) {
+      _isLoading = true;
+      notifyListeners();
+      
+      await _repository.initialize();
+      
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   // ============ Getters ============
 
@@ -57,29 +72,84 @@ class DestinationProvider extends ChangeNotifier {
     return _repository.getById(id);
   }
 
+  // Cache for reviews
+  final Map<String, List<Review>> _reviewsCache = {};
+
   /// Get reviews for a destination
   List<Review> getReviewsForDestination(String destinationId) {
+    if (_repository is FirebaseDestinationRepository) {
+      // If we don't have cached reviews for this destination, start streaming them
+      if (!_reviewsCache.containsKey(destinationId)) {
+        _reviewsCache[destinationId] = []; // Initialize empty
+        _repository
+            .streamReviews(destinationId)
+            .listen((reviews) {
+          _reviewsCache[destinationId] = reviews;
+          notifyListeners();
+        });
+      }
+      return _reviewsCache[destinationId] ?? [];
+    }
     return _repository.getReviewsForDestination(destinationId);
+  }
+
+  /// Add a new review
+  Future<void> addReview(Review review) async {
+    if (_repository is FirebaseDestinationRepository) {
+      await _repository.addReview(review);
+    } else {
+      // Logic for non-Firebase repository if needed
+    }
   }
 
   // ============ Admin Actions ============
 
   /// Add a new destination (admin only)
-  void addDestination(Destination destination) {
-    _repository.addDestination(destination);
-    notifyListeners();
+  Future<void> addDestination(Destination destination) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      await _repository.addDestination(destination);
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   /// Update an existing destination (admin only)
-  void updateDestination(Destination destination) {
-    _repository.updateDestination(destination);
-    notifyListeners();
+  Future<void> updateDestination(Destination destination) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      await _repository.updateDestination(destination);
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   /// Delete a destination (admin only)
-  void deleteDestination(String id) {
-    _repository.deleteDestination(id);
-    notifyListeners();
+  Future<void> deleteDestination(String id) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      await _repository.deleteDestination(id);
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // ============ Search & Filter ============
@@ -94,8 +164,33 @@ class DestinationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+
+
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  /// Seed the database with dummy data (One-time use)
+  Future<void> seedDatabase() async {
+    if (_repository is FirebaseDestinationRepository) {
+      try {
+        _isLoading = true;
+        notifyListeners();
+
+        // Get dummy data from the local repository
+        final dummyData = DestinationRepository().getAllDestinations();
+        
+        await _repository.seedData(dummyData);
+        
+        _isLoading = false;
+        notifyListeners();
+      } catch (e) {
+        _error = e.toString();
+        _isLoading = false;
+        notifyListeners();
+        rethrow;
+      }
+    }
   }
 }
